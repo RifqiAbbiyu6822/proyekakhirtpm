@@ -211,6 +211,7 @@ class SupportScreenState extends State<SupportScreen> with SingleTickerProviderS
   }
 
   void _refreshLocation() async {
+    if (!mounted) return;
     await _initializeThemeAndCurrency();
   }
 
@@ -316,12 +317,13 @@ class SupportScreenState extends State<SupportScreen> with SingleTickerProviderS
                             onTap: () async {
                               try {
                                 final uri = Uri.parse(instagramLink);
-                                if (!await launchUrl(
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                if (!(await launchUrl(
                                   uri,
                                   mode: LaunchMode.externalApplication,
-                                )) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                ))) {
+                                  if (context.mounted) {
+                                    scaffoldMessenger.showSnackBar(
                                       SnackBar(
                                         content: Text('Could not open $instagramLink'),
                                         backgroundColor: DynamicAppTheme.errorColor,
@@ -330,8 +332,9 @@ class SupportScreenState extends State<SupportScreen> with SingleTickerProviderS
                                   }
                                 }
                               } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                if (context.mounted) {
+                                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                  scaffoldMessenger.showSnackBar(
                                     SnackBar(
                                       content: Text('Error opening link: $e'),
                                       backgroundColor: DynamicAppTheme.errorColor,
@@ -357,10 +360,10 @@ class SupportScreenState extends State<SupportScreen> with SingleTickerProviderS
                                 ),
                                 borderRadius: BorderRadius.all(Radius.circular(12)),
                               ),
-                              child: Row(
+                              child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
+                                children: [
                                   Icon(
                                     Icons.camera_alt,
                                     size: 24,

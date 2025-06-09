@@ -109,7 +109,7 @@ class HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _initializeAccelerometer() {
-    _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
+    _accelerometerSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       _detectShake(event);
     });
   }

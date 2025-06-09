@@ -1,7 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
 import 'dart:async';
 
@@ -141,16 +140,17 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    // Simple periodic notification
+    // Use rotating messages for periodic notification
+    final message = _getNextNotificationMessage();
     await _notifications.periodicallyShow(
       0,
-      '🏛️ History Quiz Time!',
-      'Test your knowledge with our exciting history questions!',
+      message['title']!,
+      message['body']!,
       RepeatInterval.everyMinute,
       details,
     );
 
-    logger.d('Basic periodic notification started');
+    logger.d('Basic periodic notification started with rotating messages');
   }
 
   static Future<void> scheduleCustomNotification({

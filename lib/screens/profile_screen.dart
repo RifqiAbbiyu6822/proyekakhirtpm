@@ -453,13 +453,13 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: DynamicAppTheme.primaryColor.withOpacity(0.2),
+                                    color: DynamicAppTheme.primaryColor.withAlpha((0.2 * 255).round()),
                                     width: 4,
                                   ),
                                 ),
                                 child: CircleAvatar(
                                   radius: 60,
-                                  backgroundColor: DynamicAppTheme.primaryColor.withAlpha(25),
+                                  backgroundColor: DynamicAppTheme.primaryColor.withValues(alpha: 25/255),
                                   backgroundImage: _profileImage != null
                                       ? FileImage(_profileImage!)
                                       : null,
@@ -826,7 +826,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                                 hintText: 'Search by username...',
                                 prefixIcon: Icon(Icons.search, color: DynamicAppTheme.textSecondary),
                                 filled: true,
-                                fillColor: DynamicAppTheme.surfaceColor.withOpacity(0.1),
+                                fillColor: DynamicAppTheme.surfaceColor.withValues(alpha: 0.1 * 255),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -979,12 +979,12 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: isCurrentUser
-                                          ? DynamicAppTheme.primaryColor.withOpacity(0.1)
-                                          : DynamicAppTheme.surfaceColor.withOpacity(0.05),
+                                          ? DynamicAppTheme.primaryColor.withValues(alpha: 0.1 * 255)
+                                                                                      : DynamicAppTheme.surfaceColor.withValues(alpha: 0.05 * 255),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isCurrentUser
-                                            ? DynamicAppTheme.primaryColor.withOpacity(0.3)
+                                            ? DynamicAppTheme.primaryColor.withValues(alpha: 0.3 * 255)
                                             : Colors.transparent,
                                       ),
                                     ),
@@ -1019,14 +1019,14 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                                                 shape: BoxShape.circle,
                                                 border: Border.all(
                                                   color: isCurrentUser
-                                                      ? DynamicAppTheme.primaryColor.withOpacity(0.3)
-                                                      : DynamicAppTheme.surfaceColor.withOpacity(0.1),
+                                                      ? DynamicAppTheme.primaryColor.withValues(alpha: 0.3 * 255)
+                                                      : DynamicAppTheme.surfaceColor.withValues(alpha: 0.1 * 255),
                                                   width: 2,
                                                 ),
                                               ),
                                               child: CircleAvatar(
                                                 radius: 24,
-                                                backgroundColor: DynamicAppTheme.primaryColor.withAlpha(25),
+                                                backgroundColor: DynamicAppTheme.primaryColor.withValues(alpha: 25/255),
                                                 child: ClipOval(
                                                   child: snapshot.hasData && snapshot.data != null
                                                       ? Image.file(
@@ -1151,7 +1151,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       ),
       backgroundColor: selected
           ? DynamicAppTheme.primaryColor
-          : DynamicAppTheme.surfaceColor.withOpacity(0.1),
+          : DynamicAppTheme.surfaceColor.withValues(alpha: 0.1 * 255),
       onPressed: onSelected,
     );
   }
@@ -1400,7 +1400,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(
-                        color: DynamicAppTheme.textLight.withOpacity(0.2),
+                        color: DynamicAppTheme.textLight.withValues(alpha: 0.2 * 255),
                       ),
                     ),
                   ),
@@ -1592,7 +1592,7 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               filled: true,
-                              fillColor: DynamicAppTheme.surfaceColor.withOpacity(0.05),
+                              fillColor: DynamicAppTheme.surfaceColor.withValues(alpha: 0.05 * 255),
                             ),
                           ),
                         ],
