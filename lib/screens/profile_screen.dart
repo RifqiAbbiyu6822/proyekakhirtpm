@@ -48,11 +48,30 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
   }
 
   Future<void> _loadProfileImage() async {
-    if (_currentUser?.profileImagePath != null) {
-      final imageFile = await ImageService.getImageFile(_currentUser!.profileImagePath);
-      if (imageFile != null && mounted) {
+    try {
+      logger.i('Loading profile image...');
+      if (_currentUser?.profileImagePath != null) {
+        logger.d('Profile image path: ${_currentUser!.profileImagePath}');
+        final imageFile = await ImageService.getImageFile(_currentUser!.profileImagePath);
+        if (imageFile != null && mounted) {
+          logger.i('Profile image loaded successfully');
+          setState(() {
+            _profileImage = imageFile;
+          });
+        } else {
+          logger.w('Could not load profile image');
+          if (mounted) {
+            setState(() {
+              _profileImage = null;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      logger.e('Error loading profile image: $e');
+      if (mounted) {
         setState(() {
-          _profileImage = imageFile;
+          _profileImage = null;
         });
       }
     }
@@ -60,14 +79,26 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
 
   Future<void> _pickImage(ImageSource source) async {
     try {
+      logger.i('Starting image pick process...');
+      
+      // Check permissions first
+      final hasPermissions = await ImageService.requestPermissions();
+      if (!hasPermissions) {
+        throw Exception('Camera and storage permissions are required');
+      }
+
       File? image;
       if (source == ImageSource.camera) {
+        logger.i('Taking photo from camera...');
         image = await ImageService.takePhoto();
       } else {
+        logger.i('Picking image from gallery...');
         image = await ImageService.pickImageFromGallery();
       }
 
       if (image != null && _currentUser != null) {
+        logger.i('Image selected successfully: ${image.path}');
+        
         // Save new profile image
         final imagePath = await ImageService.saveProfileImage(
           image,
@@ -75,21 +106,33 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
         );
 
         if (imagePath != null) {
+          logger.i('Image saved successfully at: $imagePath');
+          
           // Delete old profile image if exists
           if (_currentUser!.profileImagePath != null) {
+            logger.i('Deleting old profile image...');
             await ImageService.deleteProfileImage(_currentUser!.profileImagePath!);
           }
 
           // Update user with new profile image path
           final updatedUser = _currentUser!.copyWith(profileImagePath: imagePath);
           await DatabaseHelper.instance.updateUser(updatedUser);
-          AuthService.updateCurrentUser(updatedUser);
+          await AuthService.updateCurrentUser(updatedUser);
 
-          setState(() {
-            _currentUser = updatedUser;
-            _profileImage = image;
-          });
+          if (mounted) {
+            setState(() {
+              _currentUser = updatedUser;
+              _profileImage = image;
+            });
+          }
+          
+          logger.i('Profile image updated successfully');
+        } else {
+          logger.e('Failed to save profile image');
+          throw Exception('Failed to save profile image');
         }
+      } else {
+        logger.w('No image was selected or user is null');
       }
     } catch (e) {
       logger.e('Error picking image: $e');
@@ -108,21 +151,35 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Update Profile Picture'),
+        backgroundColor: DynamicAppTheme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text(
+          'Update Profile Picture',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: DynamicAppTheme.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Take Photo'),
+              leading: Icon(Icons.camera_alt, color: DynamicAppTheme.primaryColor),
+              title: Text(
+                'Take Photo',
+                style: TextStyle(color: DynamicAppTheme.textPrimary),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Choose from Gallery'),
+              leading: Icon(Icons.photo_library, color: DynamicAppTheme.primaryColor),
+              title: Text(
+                'Choose from Gallery',
+                style: TextStyle(color: DynamicAppTheme.textPrimary),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -131,7 +188,10 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
             if (_profileImage != null)
               ListTile(
                 leading: Icon(Icons.delete, color: DynamicAppTheme.errorColor),
-                title: const Text('Remove Photo'),
+                title: Text(
+                  'Remove Photo',
+                  style: TextStyle(color: DynamicAppTheme.errorColor),
+                ),
                 onTap: () async {
                   Navigator.pop(context);
                   await _removeProfileImage();
@@ -389,34 +449,54 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
                         Center(
                           child: Stack(
                             children: [
-                              CircleAvatar(
-                                radius: 60,
-                                backgroundColor: DynamicAppTheme.primaryColor.withAlpha(25),
-                                backgroundImage: _profileImage != null
-                                    ? FileImage(_profileImage!)
-                                    : null,
-                                child: _profileImage == null
-                                    ? Icon(
-                                        Icons.person,
-                                        size: 60,
-                                        color: DynamicAppTheme.primaryColor,
-                                      )
-                                    : null,
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: DynamicAppTheme.primaryColor.withOpacity(0.2),
+                                    width: 4,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: DynamicAppTheme.primaryColor.withAlpha(25),
+                                  backgroundImage: _profileImage != null
+                                      ? FileImage(_profileImage!)
+                                      : null,
+                                  child: _profileImage == null
+                                      ? Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: DynamicAppTheme.primaryColor,
+                                        )
+                                      : null,
+                                ),
                               ),
                               Positioned(
                                 bottom: 0,
                                 right: 0,
                                 child: Container(
+                                  padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: DynamicAppTheme.primaryColor.withAlpha(25),
+                                    color: DynamicAppTheme.primaryColor,
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: DynamicAppTheme.surfaceColor,
+                                      width: 2,
+                                    ),
                                   ),
                                   child: IconButton(
                                     icon: const Icon(
                                       Icons.camera_alt,
                                       color: Colors.white,
+                                      size: 20,
                                     ),
                                     onPressed: _showImageSourceDialog,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(
+                                      minWidth: 32,
+                                      minHeight: 32,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -675,301 +755,359 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
         builder: (BuildContext context) {
           return StatefulBuilder(
             builder: (context, setState) {
-              return AlertDialog(
-                backgroundColor: DynamicAppTheme.cardColor,
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Leaderboard',
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: DynamicAppTheme.textPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.refresh, color: DynamicAppTheme.primaryColor),
-                          onPressed: () async {
-                            try {
-                              final updatedLeaderboard = await DatabaseHelper.instance.getLeaderboard(
-                                searchQuery: searchQuery,
-                                sortBy: sortBy,
-                                ascending: ascending,
-                              );
-                              if (!mounted) return;
-                              setState(() => leaderboard.clear());
-                              setState(() => leaderboard.addAll(updatedLeaderboard));
-                            } catch (e) {
-                              if (!mounted) return;
-                              scaffoldMessenger.showSnackBar(
-                                SnackBar(content: Text('Error refreshing leaderboard: $e')),
-                              );
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Search bar
-                    TextField(
-                      onChanged: (value) async {
-                        searchQuery = value;
-                        try {
-                          final searchResults = await DatabaseHelper.instance.getLeaderboard(
-                            searchQuery: value,
-                            sortBy: sortBy,
-                            ascending: ascending,
-                          );
-                          setState(() {
-                            leaderboard.clear();
-                            leaderboard.addAll(searchResults);
-                          });
-                        } catch (e) {
-                          scaffoldMessenger.showSnackBar(
-                            SnackBar(content: Text('Error searching: $e')),
-                          );
-                        }
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search by username...',
-                        prefixIcon: Icon(Icons.search, color: DynamicAppTheme.textSecondary),
-                        filled: true,
-                        fillColor: DynamicAppTheme.surfaceColor.withOpacity(0.1),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                      style: TextStyle(color: DynamicAppTheme.textPrimary),
-                    ),
-                    const SizedBox(height: 16),
-                    // Sort options
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildSortChip(
-                            label: 'High Score',
-                            selected: sortBy == 'high_score',
-                            ascending: ascending && sortBy == 'high_score',
-                            onSelected: () async {
-                              final newAscending = sortBy == 'high_score' ? !ascending : false;
-                              setState(() {
-                                sortBy = 'high_score';
-                                ascending = newAscending;
-                              });
-                              try {
-                                final sortedResults = await DatabaseHelper.instance.getLeaderboard(
-                                  searchQuery: searchQuery,
-                                  sortBy: sortBy,
-                                  ascending: ascending,
-                                );
-                                setState(() {
-                                  leaderboard.clear();
-                                  leaderboard.addAll(sortedResults);
-                                });
-                              } catch (e) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(content: Text('Error sorting: $e')),
-                                );
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildSortChip(
-                            label: 'Username',
-                            selected: sortBy == 'username',
-                            ascending: ascending && sortBy == 'username',
-                            onSelected: () async {
-                              final newAscending = sortBy == 'username' ? !ascending : true;
-                              setState(() {
-                                sortBy = 'username';
-                                ascending = newAscending;
-                              });
-                              try {
-                                final sortedResults = await DatabaseHelper.instance.getLeaderboard(
-                                  searchQuery: searchQuery,
-                                  sortBy: sortBy,
-                                  ascending: ascending,
-                                );
-                                setState(() {
-                                  leaderboard.clear();
-                                  leaderboard.addAll(sortedResults);
-                                });
-                              } catch (e) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(content: Text('Error sorting: $e')),
-                                );
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildSortChip(
-                            label: 'Total Quizzes',
-                            selected: sortBy == 'total_quizzes',
-                            ascending: ascending && sortBy == 'total_quizzes',
-                            onSelected: () async {
-                              final newAscending = sortBy == 'total_quizzes' ? !ascending : false;
-                              setState(() {
-                                sortBy = 'total_quizzes';
-                                ascending = newAscending;
-                              });
-                              try {
-                                final sortedResults = await DatabaseHelper.instance.getLeaderboard(
-                                  searchQuery: searchQuery,
-                                  sortBy: sortBy,
-                                  ascending: ascending,
-                                );
-                                setState(() {
-                                  leaderboard.clear();
-                                  leaderboard.addAll(sortedResults);
-                                });
-                              } catch (e) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(content: Text('Error sorting: $e')),
-                                );
-                              }
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildSortChip(
-                            label: 'Last Quiz',
-                            selected: sortBy == 'last_quiz_date',
-                            ascending: ascending && sortBy == 'last_quiz_date',
-                            onSelected: () async {
-                              final newAscending = sortBy == 'last_quiz_date' ? !ascending : false;
-                              setState(() {
-                                sortBy = 'last_quiz_date';
-                                ascending = newAscending;
-                              });
-                              try {
-                                final sortedResults = await DatabaseHelper.instance.getLeaderboard(
-                                  searchQuery: searchQuery,
-                                  sortBy: sortBy,
-                                  ascending: ascending,
-                                );
-                                setState(() {
-                                  leaderboard.clear();
-                                  leaderboard.addAll(sortedResults);
-                                });
-                              } catch (e) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(content: Text('Error sorting: $e')),
-                                );
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                content: SizedBox(
-                  width: double.maxFinite,
-                  height: 400,
-                  child: leaderboard.isEmpty
-                      ? Center(
-                          child: Text(
-                            searchQuery.isEmpty ? 'No players yet!' : 'No results found',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: DynamicAppTheme.textSecondary,
-                            ),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: leaderboard.length,
-                          itemBuilder: (context, index) {
-                            final user = leaderboard[index];
-                            final isCurrentUser = user.id == _currentUser?.id;
-                            
-                            return Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isCurrentUser
-                                    ? DynamicAppTheme.primaryColor.withOpacity(0.1)
-                                    : DynamicAppTheme.surfaceColor.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isCurrentUser
-                                      ? DynamicAppTheme.primaryColor.withOpacity(0.3)
-                                      : Colors.transparent,
+              return Dialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.9,
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Leaderboard',
+                                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                    color: DynamicAppTheme.textPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
+                                IconButton(
+                                  icon: Icon(Icons.refresh, color: DynamicAppTheme.primaryColor),
+                                  onPressed: () async {
+                                    try {
+                                      final updatedLeaderboard = await DatabaseHelper.instance.getLeaderboard(
+                                        searchQuery: searchQuery,
+                                        sortBy: sortBy,
+                                        ascending: ascending,
+                                      );
+                                      if (!mounted) return;
+                                      setState(() => leaderboard.clear());
+                                      setState(() => leaderboard.addAll(updatedLeaderboard));
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      scaffoldMessenger.showSnackBar(
+                                        SnackBar(content: Text('Error refreshing leaderboard: $e')),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            // Search bar
+                            TextField(
+                              onChanged: (value) async {
+                                searchQuery = value;
+                                try {
+                                  final searchResults = await DatabaseHelper.instance.getLeaderboard(
+                                    searchQuery: value,
+                                    sortBy: sortBy,
+                                    ascending: ascending,
+                                  );
+                                  setState(() {
+                                    leaderboard.clear();
+                                    leaderboard.addAll(searchResults);
+                                  });
+                                } catch (e) {
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(content: Text('Error searching: $e')),
+                                  );
+                                }
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Search by username...',
+                                prefixIcon: Icon(Icons.search, color: DynamicAppTheme.textSecondary),
+                                filled: true,
+                                fillColor: DynamicAppTheme.surfaceColor.withOpacity(0.1),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               ),
+                              style: TextStyle(color: DynamicAppTheme.textPrimary),
+                            ),
+                            const SizedBox(height: 16),
+                            // Sort options
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: [
-                                  // Rank
-                                  Container(
-                                    width: 36,
-                                    height: 36,
+                                  _buildSortChip(
+                                    label: 'High Score',
+                                    selected: sortBy == 'high_score',
+                                    ascending: ascending && sortBy == 'high_score',
+                                    onSelected: () async {
+                                      final newAscending = sortBy == 'high_score' ? !ascending : false;
+                                      setState(() {
+                                        sortBy = 'high_score';
+                                        ascending = newAscending;
+                                      });
+                                      try {
+                                        final sortedResults = await DatabaseHelper.instance.getLeaderboard(
+                                          searchQuery: searchQuery,
+                                          sortBy: sortBy,
+                                          ascending: ascending,
+                                        );
+                                        setState(() {
+                                          leaderboard.clear();
+                                          leaderboard.addAll(sortedResults);
+                                        });
+                                      } catch (e) {
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(content: Text('Error sorting: $e')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildSortChip(
+                                    label: 'Username',
+                                    selected: sortBy == 'username',
+                                    ascending: ascending && sortBy == 'username',
+                                    onSelected: () async {
+                                      final newAscending = sortBy == 'username' ? !ascending : true;
+                                      setState(() {
+                                        sortBy = 'username';
+                                        ascending = newAscending;
+                                      });
+                                      try {
+                                        final sortedResults = await DatabaseHelper.instance.getLeaderboard(
+                                          searchQuery: searchQuery,
+                                          sortBy: sortBy,
+                                          ascending: ascending,
+                                        );
+                                        setState(() {
+                                          leaderboard.clear();
+                                          leaderboard.addAll(sortedResults);
+                                        });
+                                      } catch (e) {
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(content: Text('Error sorting: $e')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildSortChip(
+                                    label: 'Total Quizzes',
+                                    selected: sortBy == 'total_quizzes',
+                                    ascending: ascending && sortBy == 'total_quizzes',
+                                    onSelected: () async {
+                                      final newAscending = sortBy == 'total_quizzes' ? !ascending : false;
+                                      setState(() {
+                                        sortBy = 'total_quizzes';
+                                        ascending = newAscending;
+                                      });
+                                      try {
+                                        final sortedResults = await DatabaseHelper.instance.getLeaderboard(
+                                          searchQuery: searchQuery,
+                                          sortBy: sortBy,
+                                          ascending: ascending,
+                                        );
+                                        setState(() {
+                                          leaderboard.clear();
+                                          leaderboard.addAll(sortedResults);
+                                        });
+                                      } catch (e) {
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(content: Text('Error sorting: $e')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildSortChip(
+                                    label: 'Last Quiz',
+                                    selected: sortBy == 'last_quiz_date',
+                                    ascending: ascending && sortBy == 'last_quiz_date',
+                                    onSelected: () async {
+                                      final newAscending = sortBy == 'last_quiz_date' ? !ascending : false;
+                                      setState(() {
+                                        sortBy = 'last_quiz_date';
+                                        ascending = newAscending;
+                                      });
+                                      try {
+                                        final sortedResults = await DatabaseHelper.instance.getLeaderboard(
+                                          searchQuery: searchQuery,
+                                          sortBy: sortBy,
+                                          ascending: ascending,
+                                        );
+                                        setState(() {
+                                          leaderboard.clear();
+                                          leaderboard.addAll(sortedResults);
+                                        });
+                                      } catch (e) {
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(content: Text('Error sorting: $e')),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: leaderboard.isEmpty
+                            ? Center(
+                                child: Text(
+                                  searchQuery.isEmpty ? 'No players yet!' : 'No results found',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    color: DynamicAppTheme.textSecondary,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: leaderboard.length,
+                                itemBuilder: (context, index) {
+                                  final user = leaderboard[index];
+                                  final isCurrentUser = user.id == _currentUser?.id;
+                                  
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 20),
+                                    padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: _getRankColor(index + 1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                          color: DynamicAppTheme.surfaceColor,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      color: isCurrentUser
+                                          ? DynamicAppTheme.primaryColor.withOpacity(0.1)
+                                          : DynamicAppTheme.surfaceColor.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isCurrentUser
+                                            ? DynamicAppTheme.primaryColor.withOpacity(0.3)
+                                            : Colors.transparent,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  
-                                  // User info
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                    child: Row(
                                       children: [
-                                        Text(
-                                          user.username + (isCurrentUser ? ' (You)' : ''),
-                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                            color: DynamicAppTheme.textPrimary,
-                                            fontWeight: FontWeight.bold,
+                                        // Rank
+                                        Container(
+                                          width: 36,
+                                          height: 36,
+                                          decoration: BoxDecoration(
+                                            color: _getRankColor(index + 1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              '${index + 1}',
+                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                color: DynamicAppTheme.surfaceColor,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                           ),
                                         ),
+                                        const SizedBox(width: 12),
+                                        
+                                        // Profile Picture
+                                        FutureBuilder<File?>(
+                                          future: ImageService.getImageFile(user.profileImagePath),
+                                          builder: (context, snapshot) {
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: isCurrentUser
+                                                      ? DynamicAppTheme.primaryColor.withOpacity(0.3)
+                                                      : DynamicAppTheme.surfaceColor.withOpacity(0.1),
+                                                  width: 2,
+                                                ),
+                                              ),
+                                              child: CircleAvatar(
+                                                radius: 24,
+                                                backgroundColor: DynamicAppTheme.primaryColor.withAlpha(25),
+                                                child: ClipOval(
+                                                  child: snapshot.hasData && snapshot.data != null
+                                                      ? Image.file(
+                                                          snapshot.data!,
+                                                          width: 48,
+                                                          height: 48,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            logger.e('Error loading profile image: $error');
+                                                            return Icon(
+                                                              Icons.person,
+                                                              size: 24,
+                                                              color: DynamicAppTheme.primaryColor,
+                                                            );
+                                                          },
+                                                        )
+                                                      : Icon(
+                                                          Icons.person,
+                                                          size: 24,
+                                                          color: DynamicAppTheme.primaryColor,
+                                                        ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(width: 12),
+                                        
+                                        // User info
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                user.username + (isCurrentUser ? ' (You)' : ''),
+                                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                  color: DynamicAppTheme.textPrimary,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                '${user.totalQuizzes} quizzes completed',
+                                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                                  color: DynamicAppTheme.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        
+                                        // Score
                                         Text(
-                                          '${user.totalQuizzes} quizzes completed',
-                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                            color: DynamicAppTheme.textSecondary,
+                                          user.formattedHighScore,
+                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                            color: DynamicAppTheme.primaryColor,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
-                                  
-                                  // Score
-                                  Text(
-                                    user.formattedHighScore,
-                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                      color: DynamicAppTheme.primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => navigator.pop(),
-                    child: Text(
-                      'Close',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: DynamicAppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
                       ),
-                    ),
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: TextButton(
+                          onPressed: () => navigator.pop(),
+                          child: Text(
+                            'Close',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: DynamicAppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               );
             },
           );
@@ -1074,225 +1212,325 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: DynamicAppTheme.cardColor,
-          title: Text(
-            'Edit Profile',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-              color: DynamicAppTheme.textPrimary,
-              fontWeight: FontWeight.bold,
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.95,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
             ),
-          ),
-          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Username field
-                TextField(
-                  controller: usernameController,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: DynamicAppTheme.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Username',
-                    labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textSecondary,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.textLight),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.primaryColor),
-                      borderRadius: BorderRadius.circular(8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Edit Profile',
+                            style: TextStyle(
+                              color: DynamicAppTheme.textPrimary,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          // Username field
+                          TextField(
+                            controller: usernameController,
+                            style: TextStyle(
+                              color: DynamicAppTheme.textPrimary,
+                              fontSize: 18,
+                            ),
+                            decoration: InputDecoration(
+                              labelText: 'Username',
+                              labelStyle: TextStyle(
+                                color: DynamicAppTheme.textSecondary,
+                                fontSize: 16,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.textLight,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.primaryColor,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Email field
+                          TextField(
+                            controller: emailController,
+                            style: TextStyle(
+                              color: DynamicAppTheme.textPrimary,
+                              fontSize: 18,
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              labelText: 'Email',
+                              labelStyle: TextStyle(
+                                color: DynamicAppTheme.textSecondary,
+                                fontSize: 16,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.textLight,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.primaryColor,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Password section header
+                          Text(
+                            'Change Password',
+                            style: TextStyle(
+                              color: DynamicAppTheme.textPrimary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Password field
+                          TextField(
+                            controller: passwordController,
+                            style: TextStyle(
+                              color: DynamicAppTheme.textPrimary,
+                              fontSize: 18,
+                            ),
+                            obscureText: true,
+                            decoration: InputDecoration(
+                              labelText: 'New Password (optional)',
+                              labelStyle: TextStyle(
+                                color: DynamicAppTheme.textSecondary,
+                                fontSize: 16,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.textLight,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.primaryColor,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          // Confirm Password field
+                          TextField(
+                            controller: confirmPasswordController,
+                            style: TextStyle(
+                              color: DynamicAppTheme.textPrimary,
+                              fontSize: 18,
+                            ),
+                            obscureText: true,
+                            decoration: InputDecoration(
+                              labelText: 'Confirm New Password',
+                              labelStyle: TextStyle(
+                                color: DynamicAppTheme.textSecondary,
+                                fontSize: 16,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.textLight,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: DynamicAppTheme.primaryColor,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                
-                // Email field
-                TextField(
-                  controller: emailController,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: DynamicAppTheme.textPrimary,
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textSecondary,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.textLight),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.primaryColor),
-                      borderRadius: BorderRadius.circular(8),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: DynamicAppTheme.textLight.withOpacity(0.2),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                
-                // New Password field
-                TextField(
-                  controller: passwordController,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: DynamicAppTheme.textPrimary,
-                  ),
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'New Password (leave blank to keep current)',
-                    labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textSecondary,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.textLight),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.primaryColor),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Confirm New Password field
-                TextField(
-                  controller: confirmPasswordController,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: DynamicAppTheme.textPrimary,
-                  ),
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Confirm New Password',
-                    labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textSecondary,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.textLight),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: DynamicAppTheme.primaryColor),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: DynamicAppTheme.textSecondary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          textStyle: const TextStyle(fontSize: 16),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () async {
+                          // Store context-dependent values before async operations
+                          final navigator = Navigator.of(context);
+                          final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+                          try {
+                            // Validate session before updating profile
+                            final isValid = await AuthService.validateSession();
+                            if (!mounted) return;
+
+                            if (!isValid) {
+                              navigator.pushReplacementNamed('/login');
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: const Text('Your session has expired. Please login again to continue.'),
+                                  backgroundColor: DynamicAppTheme.errorColor,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Validate inputs
+                            if (usernameController.text.isEmpty || emailController.text.isEmpty) {
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: const Text('Username and email are required'),
+                                  backgroundColor: DynamicAppTheme.errorColor,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Validate password match if provided
+                            if (passwordController.text.isNotEmpty && 
+                                passwordController.text != confirmPasswordController.text) {
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: const Text('Passwords do not match'),
+                                  backgroundColor: DynamicAppTheme.errorColor,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Update user
+                            var updatedUser = _currentUser!.copyWith(
+                              username: usernameController.text,
+                              email: emailController.text,
+                            );
+
+                            // Update password if provided
+                            if (passwordController.text.isNotEmpty) {
+                              final newSalt = EncryptionService.generateSalt();
+                              final hashedPassword = EncryptionService.hashPassword(
+                                passwordController.text,
+                                newSalt,
+                              );
+                              updatedUser = updatedUser.copyWith(
+                                hashedPassword: hashedPassword,
+                                salt: newSalt,
+                              );
+                            }
+
+                            await DatabaseHelper.instance.updateUser(updatedUser);
+
+                            if (mounted) {
+                              navigator.pop();
+                              scaffoldMessenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('Profile updated successfully'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              setState(() {
+                                _currentUser = updatedUser;
+                              });
+                            }
+                          } catch (e) {
+                            logger.e('Error updating profile: $e');
+                            if (mounted) {
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('Error updating profile: $e'),
+                                  backgroundColor: DynamicAppTheme.errorColor,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: DynamicAppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        child: const Text('Save'),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'Cancel',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: DynamicAppTheme.textSecondary,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                // Store context-dependent values before async operations
-                final navigator = Navigator.of(context);
-                final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-                try {
-                  // Validate session before updating profile
-                  final isValid = await AuthService.validateSession();
-                  if (!mounted) return;
-
-                  if (!isValid) {
-                    navigator.pushReplacementNamed('/login');
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: const Text('Your session has expired. Please login again to continue.'),
-                        backgroundColor: DynamicAppTheme.errorColor,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                    return;
-                  }
-
-                  // Validate username
-                  final usernameError = AuthService.validateUsername(usernameController.text.trim());
-                  if (usernameError != null) {
-                    throw Exception(usernameError);
-                  }
-
-                  // Validate email if provided
-                  final emailError = AuthService.validateEmail(emailController.text.trim());
-                  if (emailError != null) {
-                    throw Exception(emailError);
-                  }
-
-                  // Validate password if provided
-                  if (passwordController.text.isNotEmpty) {
-                    final passwordError = AuthService.validatePassword(passwordController.text);
-                    if (passwordError != null) {
-                      throw Exception(passwordError);
-                    }
-
-                    if (passwordController.text != confirmPasswordController.text) {
-                      throw Exception('Passwords do not match');
-                    }
-                  }
-
-                  if (_currentUser != null) {
-                    String? newHashedPassword;
-                    String? newSalt;
-
-                    // Only update password if a new one is provided
-                    if (passwordController.text.isNotEmpty) {
-                      newSalt = EncryptionService.generateSalt();
-                      newHashedPassword = EncryptionService.hashPassword(
-                        passwordController.text,
-                        newSalt,
-                      );
-                    }
-
-                    final updatedUser = _currentUser!.copyWith(
-                      username: usernameController.text.trim(),
-                      email: emailController.text.trim(),
-                      hashedPassword: newHashedPassword ?? _currentUser!.hashedPassword,
-                      salt: newSalt ?? _currentUser!.salt,
-                    );
-                    
-                    await DatabaseHelper.instance.updateUser(updatedUser);
-                    AuthService.updateCurrentUser(updatedUser);
-                    
-                    if (!mounted) return;
-                    setState(() {
-                      _currentUser = updatedUser;
-                    });
-                    navigator.pop();
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: const Text('Profile updated successfully!'),
-                        backgroundColor: DynamicAppTheme.primaryColor,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  if (!mounted) return;
-                  scaffoldMessenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Error updating profile: $e'),
-                      backgroundColor: DynamicAppTheme.errorColor,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: DynamicAppTheme.primaryColor,
-              ),
-              child: const Text('Save'),
-            ),
-          ],
         );
       },
     );
@@ -1307,157 +1545,174 @@ class ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderS
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
-            return AlertDialog(
+            return Dialog(
               backgroundColor: DynamicAppTheme.cardColor,
-              title: const Text(
-                'Delete Account',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
                 ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Are you sure you want to delete your account? This action cannot be undone.',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Please enter your password to confirm:',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: passwordController,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textPrimary,
-                    ),
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      labelStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: DynamicAppTheme.textSecondary,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: DynamicAppTheme.textLight),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: const BorderSide(color: Colors.red),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
-                  child: Text(
-                    'Cancel',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: DynamicAppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          // Store context-dependent values before async operations
-                          final navigator = Navigator.of(dialogContext);
-                          final scaffoldMessenger = ScaffoldMessenger.of(dialogContext);
-                          final currentUser = _currentUser;
-
-                          setState(() {
-                            isLoading = true;
-                          });
-
-                          try {
-                            // Validate session before deleting account
-                            final isValid = await AuthService.validateSession();
-                            if (!mounted) {
-                              setState(() {
-                                isLoading = false;
-                              });
-                              return;
-                            }
-
-                            if (!isValid) {
-                              navigator.pushReplacementNamed('/login');
-                              scaffoldMessenger.showSnackBar(
-                                SnackBar(
-                                  content: const Text('Your session has expired. Please login again to continue.'),
-                                  backgroundColor: DynamicAppTheme.errorColor,
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (currentUser != null) {
-                              // Verify password
-                              final isPasswordValid = EncryptionService.verifyPassword(
-                                passwordController.text,
-                                currentUser.hashedPassword,
-                                currentUser.salt,
-                              );
-
-                              if (!isPasswordValid) {
-                                throw Exception('Incorrect password');
-                              }
-
-                              await DatabaseHelper.instance.deleteUser(currentUser.id!);
-                              await AuthService.logout();
-                              
-                              navigator.pushNamedAndRemoveUntil(
-                                '/login',
-                                (route) => false,
-                              );
-                              scaffoldMessenger.showSnackBar(
-                                SnackBar(
-                                  content: const Text('Account deleted successfully.'),
-                                  backgroundColor: DynamicAppTheme.primaryColor,
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            scaffoldMessenger.showSnackBar(
-                              SnackBar(
-                                content: Text('Error deleting account: $e'),
-                                backgroundColor: DynamicAppTheme.errorColor,
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          } finally {
-                            setState(() {
-                              isLoading = false;
-                            });
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Delete Account',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              color: DynamicAppTheme.errorColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        )
-                      : const Text('Delete'),
+                          const SizedBox(height: 16),
+                          Text(
+                            'This action cannot be undone. Please enter your password to confirm.',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: DynamicAppTheme.textPrimary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          TextField(
+                            controller: passwordController,
+                            obscureText: true,
+                            style: TextStyle(color: DynamicAppTheme.textPrimary),
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              labelStyle: TextStyle(color: DynamicAppTheme.textSecondary),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: DynamicAppTheme.textLight),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide: BorderSide(color: DynamicAppTheme.errorColor),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: DynamicAppTheme.surfaceColor.withOpacity(0.05),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                            child: Text(
+                              'Cancel',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                color: DynamicAppTheme.textSecondary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    // Store context-dependent values before async operations
+                                    final navigator = Navigator.of(dialogContext);
+                                    final scaffoldMessenger = ScaffoldMessenger.of(dialogContext);
+                                    final currentUser = _currentUser;
+
+                                    setState(() {
+                                      isLoading = true;
+                                    });
+
+                                    try {
+                                      // Validate session before deleting account
+                                      final isValid = await AuthService.validateSession();
+                                      if (!mounted) {
+                                        setState(() {
+                                          isLoading = false;
+                                        });
+                                        return;
+                                      }
+
+                                      if (!isValid) {
+                                        navigator.pushReplacementNamed('/login');
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(
+                                            content: const Text('Your session has expired. Please login again to continue.'),
+                                            backgroundColor: DynamicAppTheme.errorColor,
+                                            duration: const Duration(seconds: 3),
+                                          ),
+                                        );
+                                        return;
+                                      }
+
+                                      if (currentUser != null) {
+                                        // Verify password
+                                        final isPasswordValid = EncryptionService.verifyPassword(
+                                          passwordController.text,
+                                          currentUser.hashedPassword,
+                                          currentUser.salt,
+                                        );
+
+                                        if (!isPasswordValid) {
+                                          throw Exception('Incorrect password');
+                                        }
+
+                                        await DatabaseHelper.instance.deleteUser(currentUser.id!);
+                                        await AuthService.logout();
+                                        
+                                        navigator.pushNamedAndRemoveUntil(
+                                          '/login',
+                                          (route) => false,
+                                        );
+                                        scaffoldMessenger.showSnackBar(
+                                          SnackBar(
+                                            content: const Text('Account deleted successfully.'),
+                                            backgroundColor: DynamicAppTheme.primaryColor,
+                                            duration: const Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      scaffoldMessenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text('Error deleting account: $e'),
+                                          backgroundColor: DynamicAppTheme.errorColor,
+                                          duration: const Duration(seconds: 3),
+                                        ),
+                                      );
+                                    } finally {
+                                      setState(() {
+                                        isLoading = false;
+                                      });
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: DynamicAppTheme.errorColor,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: isLoading
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        DynamicAppTheme.surfaceColor,
+                                      ),
+                                    ),
+                                  )
+                                : const Text('Delete Account'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         );

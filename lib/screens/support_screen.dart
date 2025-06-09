@@ -99,58 +99,101 @@ class SupportScreenState extends State<SupportScreen> with SingleTickerProviderS
     
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Support Us'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Would you like to donate $formattedAmount to support development?'),
-            const SizedBox(height: 12),
-            if (currencyCode != 'USD')
-              Text(
-                'Equivalent to \$${baseDonationAmountUSD.toStringAsFixed(2)} USD',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: DynamicAppTheme.cardColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Support Us',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: DynamicAppTheme.textPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Would you like to donate $formattedAmount to support development?',
+                      style: TextStyle(color: DynamicAppTheme.textPrimary),
+                    ),
+                    const SizedBox(height: 12),
+                    if (currencyCode != 'USD')
+                      Text(
+                        'Equivalent to \$${baseDonationAmountUSD.toStringAsFixed(2)} USD',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DynamicAppTheme.textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 16, color: DynamicAppTheme.textSecondary),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            locationText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: DynamicAppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    locationText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: DynamicAppTheme.cardColor,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
                 ),
-              ],
-            ),
-          ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: DynamicAppTheme.textSecondary,
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showThankYouSnackbar();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: DynamicAppTheme.primaryColor,
+                        foregroundColor: DynamicAppTheme.surfaceColor,
+                      ),
+                      child: Text('Donate $formattedAmount'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showThankYouSnackbar();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DynamicAppTheme.primaryColor,
-              foregroundColor: DynamicAppTheme.surfaceColor,
-            ),
-            child: Text('Donate $formattedAmount'),
-          ),
-        ],
       ),
     );
   }
@@ -174,161 +217,191 @@ class SupportScreenState extends State<SupportScreen> with SingleTickerProviderS
   void _showDeveloperProfile(String name, String nim, String about, String imagePath, String? instagramLink) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: DynamicAppTheme.cardColor,
+      builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text(
-          'Developer Profile',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    DynamicAppTheme.primaryColor.withAlpha(25),
-                    DynamicAppTheme.primaryColorLight.withAlpha(25),
-                  ],
-                ),
-              ),
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: DynamicAppTheme.cardColor,
-                child: ClipOval(
-                  child: Image.asset(
-                    imagePath,
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.person,
-                        size: 50,
-                        color: DynamicAppTheme.primaryColor,
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              name,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: DynamicAppTheme.textPrimary,
-                fontSize: 20,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: DynamicAppTheme.primaryColor.withAlpha(38),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'NIM: $nim',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: DynamicAppTheme.primaryColor,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              about,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: DynamicAppTheme.textSecondary,
-                fontSize: 16,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            if (instagramLink != null) ...[
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () async {
-                  try {
-                    final uri = Uri.parse(instagramLink);
-                    if (!await launchUrl(
-                      uri,
-                      mode: LaunchMode.externalApplication,
-                    )) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Could not open $instagramLink'),
-                            backgroundColor: DynamicAppTheme.errorColor,
-                          ),
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error opening link: $e'),
-                          backgroundColor: DynamicAppTheme.errorColor,
-                        ),
-                      );
-                    }
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Color(0xFF405DE6),
-                        Color(0xFF5851DB),
-                        Color(0xFF833AB4),
-                        Color(0xFFE1306C),
-                        Color(0xFFF77737),
-                        Color(0xFFFFDC80),
-                      ],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: DynamicAppTheme.cardColor,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
                     ),
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(
-                        Icons.camera_alt,
-                        size: 20,
-                        color: Colors.white,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'Follow on Instagram',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Developer Profile',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: DynamicAppTheme.textPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                DynamicAppTheme.primaryColor.withAlpha(25),
+                                DynamicAppTheme.primaryColorLight.withAlpha(25),
+                              ],
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: DynamicAppTheme.cardColor,
+                            child: ClipOval(
+                              child: Image.asset(
+                                imagePath,
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: DynamicAppTheme.primaryColor,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          name,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: DynamicAppTheme.textPrimary,
+                            fontSize: 24,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: DynamicAppTheme.primaryColor.withAlpha(38),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'NIM: $nim',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: DynamicAppTheme.primaryColor,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          about,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: DynamicAppTheme.textSecondary,
+                            fontSize: 16,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        if (instagramLink != null) ...[
+                          const SizedBox(height: 24),
+                          GestureDetector(
+                            onTap: () async {
+                              try {
+                                final uri = Uri.parse(instagramLink);
+                                if (!await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                )) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Could not open $instagramLink'),
+                                        backgroundColor: DynamicAppTheme.errorColor,
+                                      ),
+                                    );
+                                  }
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Error opening link: $e'),
+                                      backgroundColor: DynamicAppTheme.errorColor,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Color(0xFF405DE6),
+                                    Color(0xFF5851DB),
+                                    Color(0xFF833AB4),
+                                    Color(0xFFE1306C),
+                                    Color(0xFFF77737),
+                                    Color(0xFFFFDC80),
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.all(Radius.circular(12)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.camera_alt,
+                                    size: 24,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Follow on Instagram',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: DynamicAppTheme.cardColor,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                ),
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: DynamicAppTheme.primaryColor,
+                  ),
+                  child: const Text('Close'),
                 ),
               ),
             ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: DynamicAppTheme.primaryColor,
-            ),
-            child: const Text('Close'),
           ),
-        ],
+        ),
       ),
     );
   }

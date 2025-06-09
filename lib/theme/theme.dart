@@ -4,25 +4,25 @@ import 'dart:async';
 
 class DynamicAppTheme {
   // Morning color palette (6:00 - 11:59) - Vintage Morning Propaganda
-  static const Color morningColor1 = Color(0xFFE8D8C3); // Vintage Paper
-  static const Color morningColor2 = Color(0xFFB22222); // Soviet Red
-  static const Color morningColor3 = Color(0xFF2B3F5C); // Military Blue
-  static const Color morningColor4 = Color(0xFFF4E4BC); // Aged Parchment
-  static const Color morningColor5 = Color(0xFF1A1A1A); // Propaganda Black
+  static const Color morningColor1 = Color(0xFFD4C1A6); // Vintage Parchment
+  static const Color morningColor2 = Color(0xFF8B0000); // Blood Red
+  static const Color morningColor3 = Color(0xFF2D5A27); // Military Green
+  static const Color morningColor4 = Color(0xFFE6D5B8); // Aged Paper
+  static const Color morningColor5 = Color(0xFF1A1A1A); // Deep Black
 
   // Afternoon color palette (12:00 - 17:59) - Bold Propaganda Day
-  static const Color afternoonColor1 = Color(0xFFCC1E1E); // Revolutionary Red
-  static const Color afternoonColor2 = Color(0xFF1B3058); // Navy Command
-  static const Color afternoonColor3 = Color(0xFFFFB700); // Glory Gold
-  static const Color afternoonColor4 = Color(0xFFE6D5B8); // Weathered Paper
-  static const Color afternoonColor5 = Color(0xFF262626); // Deep Black
+  static const Color afternoonColor1 = Color(0xFFA52A2A); // Vintage Red
+  static const Color afternoonColor2 = Color(0xFF4A6741); // Army Green
+  static const Color afternoonColor3 = Color(0xFFBF8F30); // Brass Gold
+  static const Color afternoonColor4 = Color(0xFFDCD3C5); // Weathered Canvas
+  static const Color afternoonColor5 = Color(0xFF2B2B2B); // Charcoal Black
 
   // Night color palette (18:00 - 5:59) - Dramatic Night Propaganda
-  static const Color nightColor1 = Color(0xFF8B0000); // Dark Blood
-  static const Color nightColor2 = Color(0xFFDAA520); // Medal Gold
-  static const Color nightColor3 = Color(0xFF000066); // Night Watch Blue
-  static const Color nightColor4 = Color(0xFFD4B886); // Vintage Kraft
-  static const Color nightColor5 = Color(0xFF000000); // Absolute Black
+  static const Color nightColor1 = Color(0xFF4A0404); // Dark Blood
+  static const Color nightColor2 = Color(0xFFB8860B); // Dark Goldenrod
+  static const Color nightColor3 = Color(0xFF1B2F3D); // Navy Blue
+  static const Color nightColor4 = Color(0xFFC3B091); // Vintage Kraft
+  static const Color nightColor5 = Color(0xFF000000); // Pure Black
 
   // Initialize and update theme based on location and TimeAPI
   static Future<void> updateTheme() async {
