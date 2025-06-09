@@ -136,16 +136,49 @@ class _FeedbackScreenState extends State<FeedbackScreen> with SingleTickerProvid
                                         color: DynamicAppTheme.primaryColor.withAlpha(25),
                                       ),
                                     ),
-                                    child: Text(
-                                      'Matakuliah ini memberikan pengalaman belajar yang sangat bermanfaat dan menantang. ' 
-                                      'Saya merasa lebih paham konsep-konsep cloud computing dan pengembangan aplikasi secara menyeluruh. '
-                                      'Terima kasih atas bimbingan dan materi yang disampaikan dengan sangat baik.',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: DynamicAppTheme.textPrimary,
-                                        fontSize: 16,
-                                        height: 1.5,
-                                      ),
-                                      textAlign: TextAlign.justify,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Matakuliah teknologi pemrograman mobile ini memberikan pengalaman belajar yang sangat bermanfaat dan menantang—dalam artian membuat kami merasakan roller coaster emosi dari excited hingga existential crisis dalam satu semester. Saya merasa lebih paham konsep-konsep pengembangan aplikasi mobile dan framework Flutter secara menyeluruh, meskipun kadang-kadang merasa seperti sedang belajar seni origami sambil ditutup mata.',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: DynamicAppTheme.textPrimary,
+                                            fontSize: 16,
+                                            height: 1.5,
+                                          ),
+                                          textAlign: TextAlign.justify,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Yang paling memorable dari mata kuliah ini adalah soal-soal ujian yang... well, let\'s just say sudah menjadi trademark khas mata kuliah bapak. Kami sudah tidak kaget lagi dengan tingkat kesulitan yang membuat mahasiswa lain iri sekaligus bersyukur tidak mengambil kelas ini. Justru kalau suatu hari Pak Bagus ingin benar-benar mengagetkan kami, mungkin bisa dicoba memberikan soal yang mudah dengan jumlah yang sedikit—pasti akan membuat kami semua shock dan bertanya-tanya "apa yang salah dengan dunia ini?"',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: DynamicAppTheme.textPrimary,
+                                            fontSize: 16,
+                                            height: 1.5,
+                                          ),
+                                          textAlign: TextAlign.justify,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Hands-on experience dalam membangun aplikasi mobile dari nol hingga deployment memang sangat valuable, walau prosesnya sering diwarnai dengan debug session yang panjang dan error messages yang terkadang lebih cryptic daripada ancient hieroglyphs.',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: DynamicAppTheme.textPrimary,
+                                            fontSize: 16,
+                                            height: 1.5,
+                                          ),
+                                          textAlign: TextAlign.justify,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Terima kasih atas bimbingan dan dedikasi luar biasa dalam mengajarkan mata kuliah ini dengan semangat yang membara dan juga atas konsistensi memberikan soal-soal yang bikin kami bertanya-tanya apakah ini masih kuliah S1 atau sudah masuk program PhD. Semoga skill Flutter yang didapat bisa bermanfaat di dunia kerja, dan jadi cerita heroik untuk cucu nanti: "Dulu kakek pernah survive mata kuliah Flutter dengan soal neraka, makanya kalian harus semangat sekolah!"',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: DynamicAppTheme.textPrimary,
+                                            fontSize: 16,
+                                            height: 1.5,
+                                          ),
+                                          textAlign: TextAlign.justify,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
