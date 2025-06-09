@@ -227,7 +227,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
         if (!mounted) return;
 
         if (loginSuccess) {
-          Navigator.pushReplacementNamed(context, '/profile');
+          Navigator.pushReplacementNamed(context, '/login');
         } else {
           Navigator.pushReplacementNamed(context, '/register');
         }
