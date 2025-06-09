@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'screens/game_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/support_screen.dart';
+import 'screens/game/game_screen.dart';
+import 'screens/home/home_screen.dart';
+import 'screens/profile/profile_screen.dart';
+import 'screens/support/support_screen.dart';
 import 'screens/feedback_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/login_screen.dart';
