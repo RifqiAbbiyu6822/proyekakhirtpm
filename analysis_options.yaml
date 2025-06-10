@@ -19,6 +19,10 @@ dart_code_metrics:
     - package:dart_code_metrics_presets/flutter.yaml
   metrics:
     cyclomatic-complexity: 20
+    halstead-volume: 1000
+    lines-of-code: 100
+    source-lines-of-code: 80
+    maintainability-index: 50
     number-of-parameters: 4
     maximum-nesting-level: 5
   metrics-exclude:

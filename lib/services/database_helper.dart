@@ -3,6 +3,8 @@ import 'package:path/path.dart';
 import '../models/user.dart';
 import 'dart:io';
 import 'package:logger/logger.dart';
+import 'package:flutter/material.dart'; // Ditambahkan untuk anotasi @visibleForTesting
+
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
@@ -14,9 +16,9 @@ class DatabaseHelper {
   Future<Database> get database async {
     if (_database != null) return _database!;
     
-    // Prevent multiple simultaneous initializations
+    // Mencegah inisialisasi ganda secara bersamaan
     if (_isInitializing) {
-      // Wait until initialization is complete
+      // Tunggu hingga inisialisasi selesai
       while (_isInitializing) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
@@ -24,18 +26,24 @@ class DatabaseHelper {
     }
     
     _isInitializing = true;
-    logger.d('Initializing database...'); // Debug log
+    logger.d('Initializing database...'); // Log debug
     
     try {
       _database = await _initDB('history_quiz.db');
-      logger.i('Database initialized successfully'); // Info log
+      logger.i('Database initialized successfully'); // Log info
       return _database!;
     } catch (e) {
-      logger.e('Error initializing database: $e'); // Error log
+      logger.e('Error initializing database: $e'); // Log error
       rethrow;
     } finally {
       _isInitializing = false;
     }
+  }
+
+  // Metode ini ditambahkan untuk keperluan testing agar bisa di-reset
+  @visibleForTesting
+  void setTestDatabase(Database db) {
+    _database = db;
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -43,9 +51,9 @@ class DatabaseHelper {
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, filePath);
       
-      logger.d('Database path: $path'); // Debug log
+      logger.d('Database path: $path'); // Log debug
 
-      // Make sure the directory exists
+      // Pastikan direktori ada
       await Directory(dirname(path)).create(recursive: true);
 
       return await openDatabase(
@@ -54,19 +62,19 @@ class DatabaseHelper {
         onCreate: _createDB,
         onUpgrade: _upgradeDB,
         onOpen: (db) async {
-          // Verify database structure
+          // Verifikasi struktur database
           await _verifyDatabaseStructure(db);
         },
       );
     } catch (e) {
-      logger.e('Error in _initDB: $e'); // Error log
+      logger.e('Error in _initDB: $e'); // Log error
       rethrow;
     }
   }
 
   Future<void> _verifyDatabaseStructure(Database db) async {
     try {
-      // Check if users table exists and has correct structure
+      // Periksa apakah tabel users ada dan memiliki struktur yang benar
       final tables = await db.query(
         'sqlite_master',
         where: 'type = ? AND name = ?',
@@ -74,10 +82,10 @@ class DatabaseHelper {
       );
 
       if (tables.isEmpty) {
-        logger.w('Users table not found, creating...'); // Warning log
+        logger.w('Users table not found, creating...'); // Log peringatan
         await _createDB(db, 4);
       } else {
-        // Verify columns
+        // Verifikasi kolom
         final tableInfo = await db.query('pragma_table_info("users")');
         final columns = tableInfo.map((col) => col['name'] as String).toList();
         
@@ -96,19 +104,19 @@ class DatabaseHelper {
         final missingColumns = requiredColumns.where((col) => !columns.contains(col)).toList();
         
         if (missingColumns.isNotEmpty) {
-          logger.w('Missing columns found: $missingColumns'); // Warning log
-          // Handle missing columns by upgrading the database
+          logger.w('Missing columns found: $missingColumns'); // Log peringatan
+          // Tangani kolom yang hilang dengan melakukan upgrade database
           await _upgradeDB(db, 3, 4);
         }
       }
     } catch (e) {
-      logger.e('Error verifying database structure: $e'); // Error log
+      logger.e('Error verifying database structure: $e'); // Log error
       rethrow;
     }
   }
 
   Future<void> _createDB(Database db, int version) async {
-    logger.i('Creating database tables...'); // Info log
+    logger.i('Creating database tables...'); // Log info
     
     await db.execute('''
       CREATE TABLE users (
@@ -125,7 +133,7 @@ class DatabaseHelper {
       )
     ''');
     
-    logger.i('Database tables created successfully'); // Info log
+    logger.i('Database tables created successfully'); // Log info
   }
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -141,22 +149,22 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await db.execute('ALTER TABLE users ADD COLUMN profile_image_path TEXT');
-      // Remove old columns that are no longer needed
+      // Hapus kolom-kolom lama yang tidak lagi diperlukan
       await db.execute('CREATE TABLE users_temp AS SELECT id, username, hashed_password, salt, email, profile_image_path, created_at, total_quizzes, high_score, last_quiz_date FROM users');
       await db.execute('DROP TABLE users');
       await db.execute('ALTER TABLE users_temp RENAME TO users');
     }
   }
 
-  // User operations
+  // Operasi Pengguna
   Future<User> createUser(User user) async {
     final db = await database;
-    logger.d('Creating new user: ${user.username}'); // Debug log
+    logger.d('Creating new user: ${user.username}'); // Log debug
     
     try {
-      // Start a transaction
+      // Mulai transaksi
       return await db.transaction((txn) async {
-        // Check if username exists within transaction
+        // Periksa apakah username sudah ada di dalam transaksi
         final existingUser = await txn.query(
           'users',
           where: 'username = ?',
@@ -168,18 +176,18 @@ class DatabaseHelper {
         }
 
         final id = await txn.insert('users', user.toMap());
-        logger.i('User created with ID: $id'); // Info log
+        logger.i('User created with ID: $id'); // Log info
         return user.id == null ? User.fromMap({...user.toMap(), 'id': id}) : user;
       });
     } catch (e) {
-      logger.e('Error creating user: $e'); // Error log
+      logger.e('Error creating user: $e'); // Log error
       rethrow;
     }
   }
 
   Future<User?> getUser(String username) async {
     final db = await database;
-    logger.d('Fetching user: $username'); // Debug log
+    logger.d('Fetching user: $username'); // Log debug
     
     try {
       final maps = await db.query(
@@ -189,14 +197,14 @@ class DatabaseHelper {
       );
 
       if (maps.isEmpty) {
-        logger.w('User not found: $username'); // Warning log
+        logger.w('User not found: $username'); // Log peringatan
         return null;
       }
       
-      logger.i('User found: $username'); // Info log
+      logger.i('User found: $username'); // Log info
       return User.fromMap(maps.first);
     } catch (e) {
-      logger.e('Error fetching user: $e'); // Error log
+      logger.e('Error fetching user: $e'); // Log error
       rethrow;
     }
   }
@@ -243,22 +251,22 @@ class DatabaseHelper {
   }
 
   Future<User> updateUserScore(User user, int quizScore) async {
-    // Get the current user data to ensure we have the latest high score
+    // Ambil data pengguna saat ini untuk memastikan kita memiliki skor tertinggi terbaru
     final currentUser = await getUserById(user.id!);
     if (currentUser == null) throw Exception('User not found');
 
-    // Calculate new values
+    // Hitung nilai baru
     final newTotalQuizzes = currentUser.totalQuizzes + 1;
     final newHighScore = quizScore > currentUser.highScore ? quizScore : currentUser.highScore;
 
-    // Create updated user
+    // Buat pengguna yang diperbarui
     final updatedUser = currentUser.copyWith(
       highScore: newHighScore,
       totalQuizzes: newTotalQuizzes,
       lastQuizDate: DateTime.now(),
     );
 
-    // Update in database
+    // Perbarui di database
     await updateUser(updatedUser);
     return updatedUser;
   }
@@ -282,13 +290,13 @@ class DatabaseHelper {
     String whereClause = '';
     List<dynamic> whereArgs = [];
 
-    // Add search functionality
+    // Tambahkan fungsionalitas pencarian
     if (searchQuery != null && searchQuery.isNotEmpty) {
       whereClause = 'username LIKE ?';
       whereArgs = ['%$searchQuery%'];
     }
 
-    // Validate sort column
+    // Validasi kolom untuk pengurutan
     final validColumns = ['high_score', 'username', 'total_quizzes', 'last_quiz_date'];
     if (!validColumns.contains(sortBy)) {
       sortBy = 'high_score';
