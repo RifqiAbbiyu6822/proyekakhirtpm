@@ -65,6 +65,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
   flutter_launcher_icons: ^0.13.1
+  dart_code_metrics_presets: ^2.22.0
+  custom_lint: ^0.7.5
+  custom_lint_builder: ^0.7.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

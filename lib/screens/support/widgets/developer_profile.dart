@@ -128,8 +128,8 @@ class DeveloperProfile extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      DynamicAppTheme.primaryColor.withOpacity(0.2),
-                      DynamicAppTheme.primaryColorLight.withOpacity(0.2),
+                      DynamicAppTheme.primaryColor.withAlpha(51),
+                      DynamicAppTheme.primaryColorLight.withAlpha(51),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
@@ -178,7 +178,7 @@ class DeveloperProfile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withAlpha(26),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
